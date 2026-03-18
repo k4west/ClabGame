@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>최종 기록 페이지 - 스타트업 브루마블</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="container">
+    <header class="hero">
+      <h1>최종 기록 페이지</h1>
+      <p>최종 기록은 localStorage에 별도로 영구 저장됩니다.</p>
+      <div class="page-links">
+        <a class="link-btn" href="index.html">기록 입력 페이지로 돌아가기</a>
+      </div>
+    </header>
+
+    <section class="card">
+      <h2>직접 기록</h2>
+      <form id="direct-final-form" class="grid-form">
+        <label>
+          팀 이름
+          <input type="text" id="direct-team-name" required placeholder="예: 알파팀" />
+        </label>
+        <label>
+          팀 한마디
+          <input type="text" id="direct-team-quote" maxlength="80" placeholder="예: 끝까지 간다" />
+        </label>
+        <label>
+          최종 금액 (억)
+          <input type="number" id="direct-team-balance-eok" step="0.1" required placeholder="예: 1.2" />
+        </label>
+        <button type="submit">직접 최종 기록 저장</button>
+      </form>
+      <p class="help">* 이 기록은 현황판 리셋과 별개로 유지됩니다.</p>
+    </section>
+
+
+    <section class="card">
+      <h2>최종 기록 삭제 (팀 선택)</h2>
+      <form id="delete-final-form" class="grid-form">
+        <label>
+          삭제할 팀 선택
+          <select id="delete-final-team" required>
+            <option value="">팀을 선택하세요</option>
+          </select>
+        </label>
+        <button type="submit" class="ghost danger">선택 팀 최종 기록 삭제</button>
+      </form>
+      <p class="help">* 선택한 팀의 최종 기록 이력이 모두 삭제됩니다.</p>
+    </section>
+
+    <section class="card">
+      <h2>최종 기록 목록</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>팀 이름</th>
+              <th>한 마디</th>
+              <th>최종 금액</th>
+              <th>기록 방식</th>
+              <th>기록 시각</th>
+            </tr>
+          </thead>
+          <tbody id="final-team-list">
+            <tr><td colspan="5" class="empty">기록된 최종 데이터가 없습니다.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>리더보드 (팀별 최신 최종 기록 기준)</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>순위</th>
+              <th>팀 이름</th>
+              <th>최종 금액</th>
+              <th>한 마디</th>
+            </tr>
+          </thead>
+          <tbody id="final-leaderboard-list">
+            <tr><td colspan="4" class="empty">기록된 최종 데이터가 없습니다.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>팀별 최종 금액 막대 그래프</h2>
+      <canvas id="final-bar-chart" width="960" height="420" aria-label="팀별 최종 금액 막대 그래프" role="img"></canvas>
+    </section>
+  </main>
+
+  <script src="final.js"></script>
+</body>
+</html>
