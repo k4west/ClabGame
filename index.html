@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>스타트업 브루마블 현황판</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="container">
+    <header>
+      <h1>스타트업 브루마블 현황판</h1>
+      <p>팀별 자금 흐름을 기록하고 회차별 변화를 확인하세요. (초기 Seed: 1억 = 10,000만원)</p>
+    </header>
+
+    <section class="card">
+      <h2>팀 추가</h2>
+      <form id="team-form" class="grid-form">
+        <label>
+          팀 이름
+          <input type="text" id="team-name" placeholder="예: 알파팀" required />
+        </label>
+        <button type="submit">팀 등록 (초기 1억)</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>이벤트 기록 (팀별 회차 자동 증가)</h2>
+      <form id="event-form" class="grid-form">
+        <label>
+          이벤트 유형
+          <select id="event-type"></select>
+        </label>
+        <label class="full">
+          메모
+          <input type="text" id="event-note" placeholder="예: 실리콘밸리 멘토링 반영" />
+        </label>
+
+        <div class="team-amounts full" id="team-amounts">
+          <p class="empty">팀을 등록하면 팀별 금액 입력칸이 나타납니다. (만원 단위, 음수 입력 가능)</p>
+        </div>
+
+        <button type="submit">기록 추가</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>현재 자금 현황</h2>
+      <div id="summary" class="summary empty">등록된 팀이 없습니다.</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>회차</th>
+              <th>팀</th>
+              <th>유형</th>
+              <th>금액(만원)</th>
+              <th>누적 자금(만원)</th>
+              <th>메모</th>
+              <th>수정</th>
+            </tr>
+          </thead>
+          <tbody id="event-list">
+            <tr><td colspan="7" class="empty">기록이 없습니다.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>회차별 자금 그래프</h2>
+      <canvas id="fund-chart" width="960" height="380" aria-label="회차별 자금 그래프" role="img"></canvas>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
