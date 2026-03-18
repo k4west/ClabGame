@@ -36,6 +36,21 @@
       <p class="help">* 이 기록은 현황판 리셋과 별개로 유지됩니다.</p>
     </section>
 
+
+    <section class="card">
+      <h2>최종 기록 삭제 (팀 선택)</h2>
+      <form id="delete-final-form" class="grid-form">
+        <label>
+          삭제할 팀 선택
+          <select id="delete-final-team" required>
+            <option value="">팀을 선택하세요</option>
+          </select>
+        </label>
+        <button type="submit" class="ghost danger">선택 팀 최종 기록 삭제</button>
+      </form>
+      <p class="help">* 선택한 팀의 최종 기록 이력이 모두 삭제됩니다.</p>
+    </section>
+
     <section class="card">
       <h2>최종 기록 목록</h2>
       <div class="table-wrap">

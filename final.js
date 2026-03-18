@@ -4,6 +4,8 @@ const directFinalForm = document.getElementById('direct-final-form');
 const directTeamNameInput = document.getElementById('direct-team-name');
 const directTeamQuoteInput = document.getElementById('direct-team-quote');
 const directTeamBalanceEokInput = document.getElementById('direct-team-balance-eok');
+const deleteFinalForm = document.getElementById('delete-final-form');
+const deleteFinalTeamSelect = document.getElementById('delete-final-team');
 const finalTeamListEl = document.getElementById('final-team-list');
 const finalLeaderboardListEl = document.getElementById('final-leaderboard-list');
 const chartCanvas = document.getElementById('final-bar-chart');
@@ -52,6 +54,19 @@ function getLatestRecordByTeam(records) {
   });
 
   return [...latestMap.values()];
+}
+
+function renderDeleteTeamOptions(records) {
+  const teamNames = [...new Set(records.map((record) => record.teamName).filter(Boolean))].sort((a, b) =>
+    a.localeCompare(b, 'ko')
+  );
+
+  deleteFinalTeamSelect.innerHTML = [
+    '<option value="">팀을 선택하세요</option>',
+    ...teamNames.map((teamName) => `<option value="${teamName}">${teamName}</option>`),
+  ].join('');
+
+  deleteFinalTeamSelect.disabled = teamNames.length === 0;
 }
 
 function renderFinalTable(records) {
@@ -175,6 +190,7 @@ function renderAll() {
   const records = state.records;
   const latestRecords = getLatestRecordByTeam(records);
 
+  renderDeleteTeamOptions(records);
   renderFinalTable(records);
   renderLeaderboard(latestRecords);
   drawBarChart(latestRecords);
@@ -211,6 +227,32 @@ directFinalForm.addEventListener('submit', (e) => {
   saveFinalRecordsState(state);
 
   directFinalForm.reset();
+  renderAll();
+});
+
+deleteFinalForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+
+  const targetTeamName = deleteFinalTeamSelect.value;
+  if (!targetTeamName) {
+    alert('삭제할 팀을 선택해주세요.');
+    return;
+  }
+
+  const ok = confirm(`${targetTeamName} 팀의 최종 기록을 모두 삭제할까요?`);
+  if (!ok) return;
+
+  const state = loadFinalRecordsState();
+  const before = state.records.length;
+  state.records = state.records.filter((record) => record.teamName !== targetTeamName);
+
+  if (state.records.length === before) {
+    alert('삭제할 기록이 없습니다.');
+    return;
+  }
+
+  saveFinalRecordsState(state);
+  deleteFinalForm.reset();
   renderAll();
 });
 
