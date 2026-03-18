@@ -239,3 +239,30 @@ td {
   border-radius: 12px;
   background: #fff;
 }
+
+.page-links {
+  margin-top: 12px;
+}
+
+.link-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #d8d2ff;
+  background: #f2efff;
+  color: #5c56b7;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.link-btn:hover {
+  background: #e8e3ff;
+}
+
+.sub-money {
+  color: var(--muted);
+  font-size: 0.82rem;
+}

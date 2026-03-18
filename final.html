@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>최종 기록 페이지 - 스타트업 브루마블</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="container">
+    <header class="hero">
+      <h1>최종 기록 페이지</h1>
+      <p>팀별 최종 결과를 한눈에 확인하세요.</p>
+      <div class="page-links">
+        <a class="link-btn" href="index.html">기록 입력 페이지로 돌아가기</a>
+      </div>
+    </header>
+
+    <section class="card">
+      <h2>팀별 최종 기록</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>팀 이름</th>
+              <th>한 마디</th>
+              <th>최종 금액</th>
+            </tr>
+          </thead>
+          <tbody id="final-team-list">
+            <tr><td colspan="3" class="empty">기록된 팀 데이터가 없습니다.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>리더보드</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>순위</th>
+              <th>팀 이름</th>
+              <th>최종 금액</th>
+              <th>한 마디</th>
+            </tr>
+          </thead>
+          <tbody id="final-leaderboard-list">
+            <tr><td colspan="4" class="empty">기록된 팀 데이터가 없습니다.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>팀별 최종 금액 막대 그래프</h2>
+      <canvas id="final-bar-chart" width="960" height="420" aria-label="팀별 최종 금액 막대 그래프" role="img"></canvas>
+    </section>
+  </main>
+
+  <script src="final.js"></script>
+</body>
+</html>
