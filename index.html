@@ -8,45 +8,67 @@
 </head>
 <body>
   <main class="container">
-    <header>
+    <header class="hero">
       <h1>스타트업 브루마블 현황판</h1>
-      <p>팀별 자금 흐름을 기록하고 회차별 변화를 확인하세요. (초기 Seed: 1억 = 10,000만원)</p>
+      <p>입력 금액/이벤트 증감은 만원, 현재 자금/누적/그래프는 억 단위로 표시됩니다.</p>
+      <div class="page-links"><a class="link-btn" href="final.html">최종 기록 페이지 보기</a></div>
     </header>
 
     <section class="card">
-      <h2>팀 추가</h2>
-      <form id="team-form" class="grid-form">
+      <div class="card-head">
+        <h2>팀 추가</h2>
+        <button id="reset-all-btn" class="ghost danger" type="button">전체 리셋</button>
+      </div>
+      <form id="team-form" class="grid-form team-form">
         <label>
           팀 이름
           <input type="text" id="team-name" placeholder="예: 알파팀" required />
         </label>
+        <label>
+          팀 한마디
+          <input type="text" id="team-quote" placeholder="예: 끝까지 간다" maxlength="80" />
+        </label>
         <button type="submit">팀 등록 (초기 1억)</button>
       </form>
-    </section>
-
-    <section class="card">
-      <h2>이벤트 기록 (팀별 회차 자동 증가)</h2>
-      <form id="event-form" class="grid-form">
-        <label>
-          이벤트 유형
-          <select id="event-type"></select>
-        </label>
-        <label class="full">
-          메모
-          <input type="text" id="event-note" placeholder="예: 실리콘밸리 멘토링 반영" />
-        </label>
-
-        <div class="team-amounts full" id="team-amounts">
-          <p class="empty">팀을 등록하면 팀별 금액 입력칸이 나타납니다. (만원 단위, 음수 입력 가능)</p>
-        </div>
-
-        <button type="submit">기록 추가</button>
-      </form>
+      <p class="help">* 팀은 최대 3개까지 등록됩니다.</p>
     </section>
 
     <section class="card">
       <h2>현재 자금 현황</h2>
       <div id="summary" class="summary empty">등록된 팀이 없습니다.</div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>리더보드 (현재 자금 순)</h2>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>순위</th>
+              <th>팀</th>
+              <th>현재 자금</th>
+              <th>팀 한마디</th>
+              <th>수정</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard-list">
+            <tr><td colspan="5" class="empty">등록된 팀이 없습니다.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>팀별 이벤트 기록 (회차 자동 증가)</h2>
+      <div id="team-event-cards" class="team-event-cards">
+        <p class="empty">팀을 등록하면 팀별 이벤트 카드가 나타납니다.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>이벤트 이력</h2>
       <div class="table-wrap">
         <table>
           <thead>
@@ -54,8 +76,8 @@
               <th>회차</th>
               <th>팀</th>
               <th>유형</th>
-              <th>금액(만원)</th>
-              <th>누적 자금(만원)</th>
+              <th>증감(만원)</th>
+              <th>누적 자금(억)</th>
               <th>메모</th>
               <th>수정</th>
             </tr>
