@@ -1,31 +1,48 @@
+const INITIAL_SEED = 10000; // 만원 단위 (1억)
+const EVENT_TYPES = [
+  '제품 개발',
+  '특허 출원',
+  '법률 컨설팅',
+  'TV 마케팅',
+  'CES 전시',
+  '인력 채용',
+  '사피 채용',
+  '특허 무상 양도',
+  '회계 컨설팅',
+  '외부 투자',
+  '코로나',
+  '회계 컨설팅',
+  'SNS 마케팅',
+  '미국 관세',
+];
+
 const teams = [];
 let events = [];
+let eventSeq = 1;
 
 const teamForm = document.getElementById('team-form');
 const eventForm = document.getElementById('event-form');
 const teamNameInput = document.getElementById('team-name');
-const seedInput = document.getElementById('seed-money');
-const eventTeamSelect = document.getElementById('event-team');
-const roundInput = document.getElementById('event-round');
 const typeInput = document.getElementById('event-type');
-const amountInput = document.getElementById('event-amount');
 const noteInput = document.getElementById('event-note');
+const teamAmountsEl = document.getElementById('team-amounts');
 const summaryEl = document.getElementById('summary');
 const eventListEl = document.getElementById('event-list');
 const chartCanvas = document.getElementById('fund-chart');
 
-const typeMap = {
-  investment: { label: '투자금', sign: 1 },
-  revenue: { label: '수익', sign: 1 },
-  expense: { label: '비용', sign: -1 },
-};
-
 function formatMoney(value) {
-  return `${new Intl.NumberFormat('ko-KR').format(value)}만원`;
+  return new Intl.NumberFormat('ko-KR').format(value);
 }
 
 function getTeam(name) {
   return teams.find((t) => t.name === name);
+}
+
+function nextRoundForTeam(teamName) {
+  const maxRound = events
+    .filter((evt) => evt.team === teamName)
+    .reduce((max, evt) => Math.max(max, evt.round), 0);
+  return maxRound + 1;
 }
 
 function recalcBalances() {
@@ -34,22 +51,38 @@ function recalcBalances() {
     team.roundBalances = [{ round: 0, balance: team.seed }];
   });
 
-  const sortedEvents = [...events].sort((a, b) => a.round - b.round || a.createdAt - b.createdAt);
-  sortedEvents.forEach((evt) => {
+  const sortedForCalc = [...events].sort(
+    (a, b) => a.team.localeCompare(b.team) || a.round - b.round || a.createdAt - b.createdAt
+  );
+
+  sortedForCalc.forEach((evt) => {
     const team = getTeam(evt.team);
     if (!team) return;
     team.balance += evt.delta;
     team.roundBalances.push({ round: evt.round, balance: team.balance });
     evt.balanceAfter = team.balance;
   });
-
-  events = sortedEvents;
 }
 
-function refreshTeamOptions() {
-  eventTeamSelect.innerHTML = teams.length
-    ? teams.map((team) => `<option value="${team.name}">${team.name}</option>`).join('')
-    : '<option value="">팀을 먼저 등록하세요</option>';
+function renderTypeOptions() {
+  typeInput.innerHTML = EVENT_TYPES.map((type) => `<option value="${type}">${type}</option>`).join('');
+}
+
+function renderTeamAmountInputs() {
+  if (!teams.length) {
+    teamAmountsEl.innerHTML = '<p class="empty">팀을 등록하면 팀별 금액 입력칸이 나타납니다. (만원 단위, 음수 입력 가능)</p>';
+    return;
+  }
+
+  teamAmountsEl.innerHTML = teams
+    .map(
+      (team) => `
+      <label>
+        ${team.name} 금액 (만원)
+        <input type="number" step="1" name="team-amount" data-team="${team.name}" value="0" />
+      </label>`
+    )
+    .join('');
 }
 
 function renderSummary() {
@@ -65,8 +98,8 @@ function renderSummary() {
       (team) => `
       <article class="summary-card">
         <h3>${team.name}</h3>
-        <div>초기 Seed: ${formatMoney(team.seed)}</div>
-        <div class="money">현재: ${formatMoney(team.balance)}</div>
+        <div>초기 Seed: ${formatMoney(team.seed)}만원</div>
+        <div class="money">현재: ${formatMoney(team.balance)}만원</div>
       </article>`
     )
     .join('');
@@ -74,22 +107,28 @@ function renderSummary() {
 
 function renderEvents() {
   if (!events.length) {
-    eventListEl.innerHTML = '<tr><td colspan="6" class="empty">기록이 없습니다.</td></tr>';
+    eventListEl.innerHTML = '<tr><td colspan="7" class="empty">기록이 없습니다.</td></tr>';
     return;
   }
 
-  eventListEl.innerHTML = events
+  const displayEvents = [...events].sort((a, b) => a.createdAt - b.createdAt);
+
+  eventListEl.innerHTML = displayEvents
     .map((evt) => {
       const cls = evt.delta >= 0 ? 'plus' : 'minus';
-      const sign = evt.delta >= 0 ? '+' : '-';
+      const value = evt.delta >= 0 ? `+${formatMoney(evt.delta)}` : formatMoney(evt.delta);
       return `
       <tr>
         <td>${evt.round}</td>
         <td>${evt.team}</td>
-        <td>${typeMap[evt.type].label}</td>
-        <td class="${cls}">${sign}${formatMoney(Math.abs(evt.delta))}</td>
+        <td>${evt.type}</td>
+        <td class="${cls}">${value}</td>
         <td>${formatMoney(evt.balanceAfter)}</td>
         <td>${evt.note || '-'}</td>
+        <td>
+          <button class="mini" type="button" data-action="edit" data-id="${evt.id}">수정</button>
+          <button class="mini danger" type="button" data-action="delete" data-id="${evt.id}">삭제</button>
+        </td>
       </tr>`;
     })
     .join('');
@@ -132,7 +171,7 @@ function drawChart() {
   const range = Math.max(maxVal - minVal, 1);
 
   const toX = (idx) => pad.left + (idx * (width - pad.left - pad.right)) / Math.max(rounds.length - 1, 1);
-  const toY = (val) => pad.top + (maxVal - val) * (height - pad.top - pad.bottom) / range;
+  const toY = (val) => pad.top + ((maxVal - val) * (height - pad.top - pad.bottom)) / range;
 
   ctx.strokeStyle = '#cbd5e1';
   ctx.lineWidth = 1;
@@ -147,7 +186,7 @@ function drawChart() {
     const value = Math.round(maxVal - (range * i) / 4);
     ctx.fillStyle = '#475569';
     ctx.font = '12px sans-serif';
-    ctx.fillText(new Intl.NumberFormat('ko-KR').format(value), 8, y + 4);
+    ctx.fillText(formatMoney(value), 8, y + 4);
   }
 
   rounds.forEach((round, idx) => {
@@ -163,7 +202,7 @@ function drawChart() {
     ctx.fillText(`R${round}`, x - 10, height - 12);
   });
 
-  const palette = ['#2563eb', '#e11d48', '#16a34a', '#d97706', '#7c3aed', '#0891b2'];
+  const palette = ['#2563eb', '#e11d48', '#16a34a'];
 
   teams.forEach((team, teamIdx) => {
     const values = points[teamIdx];
@@ -197,7 +236,7 @@ function drawChart() {
 
 function renderAll() {
   recalcBalances();
-  refreshTeamOptions();
+  renderTeamAmountInputs();
   renderSummary();
   renderEvents();
   drawChart();
@@ -206,9 +245,12 @@ function renderAll() {
 teamForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const name = teamNameInput.value.trim();
-  const seed = Number(seedInput.value);
 
   if (!name) return;
+  if (teams.length >= 3) {
+    alert('팀은 최대 3개까지 등록할 수 있습니다.');
+    return;
+  }
   if (teams.some((team) => team.name === name)) {
     alert('이미 존재하는 팀 이름입니다.');
     return;
@@ -216,13 +258,12 @@ teamForm.addEventListener('submit', (e) => {
 
   teams.push({
     name,
-    seed,
-    balance: seed,
-    roundBalances: [{ round: 0, balance: seed }],
+    seed: INITIAL_SEED,
+    balance: INITIAL_SEED,
+    roundBalances: [{ round: 0, balance: INITIAL_SEED }],
   });
 
   teamForm.reset();
-  seedInput.value = '1000';
   renderAll();
 });
 
@@ -233,28 +274,75 @@ eventForm.addEventListener('submit', (e) => {
     return;
   }
 
-  const team = eventTeamSelect.value;
-  const round = Number(roundInput.value);
   const type = typeInput.value;
-  const amount = Number(amountInput.value);
   const note = noteInput.value.trim();
+  const amountInputs = eventForm.querySelectorAll('input[name="team-amount"]');
 
-  if (!team || !round || !amount) return;
+  let addedCount = 0;
+  amountInputs.forEach((input) => {
+    const delta = Number(input.value);
+    if (!delta) return;
 
-  const delta = amount * typeMap[type].sign;
-  events.push({
-    team,
-    round,
-    type,
-    delta,
-    note,
-    createdAt: Date.now() + Math.random(),
+    const team = input.dataset.team;
+    events.push({
+      id: eventSeq,
+      team,
+      round: nextRoundForTeam(team),
+      type,
+      delta,
+      note,
+      createdAt: Date.now() + eventSeq / 1000,
+    });
+    eventSeq += 1;
+    addedCount += 1;
   });
 
+  if (!addedCount) {
+    alert('적어도 한 팀에는 0이 아닌 금액을 입력해주세요.');
+    return;
+  }
+
   eventForm.reset();
-  roundInput.value = String(Math.max(1, round));
-  amountInput.value = '100';
+  renderTypeOptions();
   renderAll();
 });
 
+eventListEl.addEventListener('click', (e) => {
+  const target = e.target;
+  if (!(target instanceof HTMLButtonElement)) return;
+
+  const id = Number(target.dataset.id);
+  const action = target.dataset.action;
+  const evt = events.find((item) => item.id === id);
+  if (!evt) return;
+
+  if (action === 'delete') {
+    events = events.filter((item) => item.id !== id);
+    renderAll();
+    return;
+  }
+
+  if (action === 'edit') {
+    const nextType = prompt('이벤트 유형을 입력하세요.', evt.type);
+    if (nextType === null) return;
+
+    const nextAmountRaw = prompt('금액(만원, 음수 가능)을 입력하세요.', String(evt.delta));
+    if (nextAmountRaw === null) return;
+    const nextAmount = Number(nextAmountRaw);
+    if (!Number.isFinite(nextAmount) || nextAmount === 0) {
+      alert('금액은 0이 아닌 숫자여야 합니다.');
+      return;
+    }
+
+    const nextNote = prompt('메모를 입력하세요.', evt.note || '');
+    if (nextNote === null) return;
+
+    evt.type = nextType.trim() || evt.type;
+    evt.delta = nextAmount;
+    evt.note = nextNote.trim();
+    renderAll();
+  }
+});
+
+renderTypeOptions();
 renderAll();
