@@ -266,3 +266,14 @@ td {
   color: var(--muted);
   font-size: 0.82rem;
 }
+
+.action-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.mini.secondary {
+  background: #b1acef;
+}

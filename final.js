@@ -1,6 +1,9 @@
-const STORAGE_KEY = 'clabgame_state_v5';
-const INITIAL_SEED_MANWON = 10000;
+const FINAL_RECORDS_KEY = 'clabgame_final_records_v1';
 
+const directFinalForm = document.getElementById('direct-final-form');
+const directTeamNameInput = document.getElementById('direct-team-name');
+const directTeamQuoteInput = document.getElementById('direct-team-quote');
+const directTeamBalanceEokInput = document.getElementById('direct-team-balance-eok');
 const finalTeamListEl = document.getElementById('final-team-list');
 const finalLeaderboardListEl = document.getElementById('final-leaderboard-list');
 const chartCanvas = document.getElementById('final-bar-chart');
@@ -15,85 +18,89 @@ function formatEok(manwon) {
   return `${text}억`;
 }
 
-function loadState() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) {
-    return { teams: [], events: [] };
-  }
+function formatDate(ts) {
+  return new Date(ts).toLocaleString('ko-KR');
+}
+
+function loadFinalRecordsState() {
+  const raw = localStorage.getItem(FINAL_RECORDS_KEY);
+  if (!raw) return { seq: 1, records: [] };
 
   try {
     const parsed = JSON.parse(raw);
     return {
-      teams: Array.isArray(parsed.teams) ? parsed.teams : [],
-      events: Array.isArray(parsed.events) ? parsed.events : [],
+      seq: Number.isFinite(parsed.seq) ? parsed.seq : 1,
+      records: Array.isArray(parsed.records) ? parsed.records : [],
     };
   } catch {
-    return { teams: [], events: [] };
+    return { seq: 1, records: [] };
   }
 }
 
-function recalcFinalBalances(teams, events) {
-  const teamMap = new Map();
-  teams.forEach((team) => {
-    teamMap.set(team.id, {
-      id: team.id,
-      name: team.name,
-      quote: team.quote || '',
-      balance: INITIAL_SEED_MANWON,
-    });
-  });
-
-  const sortedEvents = [...events].sort((a, b) => a.createdAt - b.createdAt || a.id - b.id);
-  sortedEvents.forEach((evt) => {
-    const team = teamMap.get(evt.teamId);
-    if (!team) return;
-    team.balance += Number(evt.deltaManwon) || 0;
-  });
-
-  return [...teamMap.values()];
+function saveFinalRecordsState(state) {
+  localStorage.setItem(FINAL_RECORDS_KEY, JSON.stringify(state));
 }
 
-function renderFinalTable(finalTeams) {
-  if (!finalTeams.length) {
-    finalTeamListEl.innerHTML = '<tr><td colspan="3" class="empty">기록된 팀 데이터가 없습니다.</td></tr>';
+function getLatestRecordByTeam(records) {
+  const latestMap = new Map();
+
+  records.forEach((record) => {
+    const prev = latestMap.get(record.teamName);
+    if (!prev || record.savedAt > prev.savedAt) {
+      latestMap.set(record.teamName, record);
+    }
+  });
+
+  return [...latestMap.values()];
+}
+
+function renderFinalTable(records) {
+  if (!records.length) {
+    finalTeamListEl.innerHTML = '<tr><td colspan="5" class="empty">기록된 최종 데이터가 없습니다.</td></tr>';
     return;
   }
 
-  finalTeamListEl.innerHTML = finalTeams
+  const sorted = [...records].sort((a, b) => b.savedAt - a.savedAt || b.id - a.id);
+  finalTeamListEl.innerHTML = sorted
     .map(
-      (team) => `
+      (record) => `
       <tr>
-        <td>${team.name}</td>
-        <td>${team.quote || '-'}</td>
-        <td>${formatEok(team.balance)} <span class="sub-money">(${formatNumber(team.balance)}만원)</span></td>
+        <td>${record.teamName}</td>
+        <td>${record.quote || '-'}</td>
+        <td>${formatEok(record.finalBalanceManwon)} <span class="sub-money">(${formatNumber(record.finalBalanceManwon)}만원)</span></td>
+        <td>${record.source}</td>
+        <td>${formatDate(record.savedAt)}</td>
       </tr>
       `
     )
     .join('');
 }
 
-function renderLeaderboard(finalTeams) {
-  if (!finalTeams.length) {
-    finalLeaderboardListEl.innerHTML = '<tr><td colspan="4" class="empty">기록된 팀 데이터가 없습니다.</td></tr>';
+function renderLeaderboard(latestRecords) {
+  if (!latestRecords.length) {
+    finalLeaderboardListEl.innerHTML = '<tr><td colspan="4" class="empty">기록된 최종 데이터가 없습니다.</td></tr>';
     return;
   }
 
-  const sorted = [...finalTeams].sort((a, b) => b.balance - a.balance || a.name.localeCompare(b.name));
+  const sorted = [...latestRecords].sort(
+    (a, b) => b.finalBalanceManwon - a.finalBalanceManwon || a.teamName.localeCompare(b.teamName)
+  );
+
   finalLeaderboardListEl.innerHTML = sorted
     .map(
-      (team, idx) => `
+      (record, idx) => `
       <tr>
         <td>${idx + 1}</td>
-        <td>${team.name}</td>
-        <td>${formatEok(team.balance)} <span class="sub-money">(${formatNumber(team.balance)}만원)</span></td>
-        <td>${team.quote || '-'}</td>
+        <td>${record.teamName}</td>
+        <td>${formatEok(record.finalBalanceManwon)} <span class="sub-money">(${formatNumber(record.finalBalanceManwon)}만원)</span></td>
+        <td>${record.quote || '-'}</td>
       </tr>
       `
     )
     .join('');
 }
 
-function drawBarChart(finalTeams) {
+function drawBarChart(latestRecords) {
   const ctx = chartCanvas.getContext('2d');
   const width = chartCanvas.width;
   const height = chartCanvas.height;
@@ -101,15 +108,15 @@ function drawBarChart(finalTeams) {
 
   ctx.clearRect(0, 0, width, height);
 
-  if (!finalTeams.length) {
+  if (!latestRecords.length) {
     ctx.fillStyle = '#7c7f98';
     ctx.font = '15px sans-serif';
-    ctx.fillText('기록된 팀 데이터가 없습니다.', 24, 44);
+    ctx.fillText('기록된 최종 데이터가 없습니다.', 24, 44);
     return;
   }
 
-  const balances = finalTeams.map((team) => team.balance);
-  const maxVal = Math.max(...balances, INITIAL_SEED_MANWON);
+  const balances = latestRecords.map((record) => record.finalBalanceManwon);
+  const maxVal = Math.max(...balances, 0);
   const minVal = Math.min(...balances, 0);
   const range = Math.max(maxVal - minVal, 1);
 
@@ -117,7 +124,7 @@ function drawBarChart(finalTeams) {
   const chartWidth = width - pad.left - pad.right;
   const zeroY = pad.top + ((maxVal - 0) * chartHeight) / range;
   const barGap = 24;
-  const barWidth = Math.max((chartWidth - barGap * (finalTeams.length + 1)) / finalTeams.length, 30);
+  const barWidth = Math.max((chartWidth - barGap * (latestRecords.length + 1)) / latestRecords.length, 30);
 
   ctx.strokeStyle = '#d8d6ef';
   ctx.lineWidth = 1;
@@ -129,6 +136,7 @@ function drawBarChart(finalTeams) {
     ctx.moveTo(pad.left, y);
     ctx.lineTo(width - pad.right, y);
     ctx.stroke();
+
     ctx.fillStyle = '#666a86';
     ctx.font = '12px sans-serif';
     ctx.fillText(formatEok(value), 10, y + 4);
@@ -143,9 +151,9 @@ function drawBarChart(finalTeams) {
 
   const palette = ['#8f87f1', '#f294b6', '#66c9c1', '#f7b267', '#8ec5ff'];
 
-  finalTeams.forEach((team, idx) => {
+  latestRecords.forEach((record, idx) => {
     const x = pad.left + barGap + idx * (barWidth + barGap);
-    const y = pad.top + ((maxVal - team.balance) * chartHeight) / range;
+    const y = pad.top + ((maxVal - record.finalBalanceManwon) * chartHeight) / range;
     const barTop = Math.min(y, zeroY);
     const barHeight = Math.max(Math.abs(zeroY - y), 1);
 
@@ -155,19 +163,55 @@ function drawBarChart(finalTeams) {
     ctx.fillStyle = '#4b4f71';
     ctx.font = '12px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(team.name, x + barWidth / 2, height - 24);
-    ctx.fillText(formatEok(team.balance), x + barWidth / 2, barTop - 8);
+    ctx.fillText(record.teamName, x + barWidth / 2, height - 24);
+    ctx.fillText(formatEok(record.finalBalanceManwon), x + barWidth / 2, barTop - 8);
   });
 
   ctx.textAlign = 'left';
 }
 
-function init() {
-  const { teams, events } = loadState();
-  const finalTeams = recalcFinalBalances(teams, events);
-  renderFinalTable(finalTeams);
-  renderLeaderboard(finalTeams);
-  drawBarChart(finalTeams);
+function renderAll() {
+  const state = loadFinalRecordsState();
+  const records = state.records;
+  const latestRecords = getLatestRecordByTeam(records);
+
+  renderFinalTable(records);
+  renderLeaderboard(latestRecords);
+  drawBarChart(latestRecords);
 }
 
-init();
+directFinalForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+
+  const teamName = directTeamNameInput.value.trim();
+  const quote = directTeamQuoteInput.value.trim();
+  const eokAmount = Number(directTeamBalanceEokInput.value);
+
+  if (!teamName) {
+    alert('팀 이름을 입력해주세요.');
+    return;
+  }
+  if (!Number.isFinite(eokAmount)) {
+    alert('최종 금액(억)을 숫자로 입력해주세요.');
+    return;
+  }
+
+  const finalBalanceManwon = Math.round(eokAmount * 10000);
+  const state = loadFinalRecordsState();
+
+  state.records.push({
+    id: state.seq,
+    teamName,
+    quote,
+    finalBalanceManwon,
+    source: '직접 기록',
+    savedAt: Date.now(),
+  });
+  state.seq += 1;
+  saveFinalRecordsState(state);
+
+  directFinalForm.reset();
+  renderAll();
+});
+
+renderAll();

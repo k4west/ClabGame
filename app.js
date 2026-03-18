@@ -1,5 +1,6 @@
 const INITIAL_SEED_MANWON = 10000; // 1억
 const STORAGE_KEY = 'clabgame_state_v5';
+const FINAL_RECORDS_KEY = 'clabgame_final_records_v1';
 const EVENT_TYPES = [
   '제품 개발',
   '특허 출원',
@@ -45,12 +46,8 @@ function formatManwon(value) {
   return '0만원';
 }
 
-function toEok(manwon) {
-  return manwon / 10000;
-}
-
 function formatEok(manwon) {
-  const eok = toEok(manwon);
+  const eok = manwon / 10000;
   const text = Number.isInteger(eok) ? String(eok) : eok.toFixed(1).replace(/\.0$/, '');
   return `${text}억`;
 }
@@ -96,26 +93,53 @@ function loadState() {
   }
 }
 
+function loadFinalRecordsState() {
+  const raw = localStorage.getItem(FINAL_RECORDS_KEY);
+  if (!raw) return { seq: 1, records: [] };
+
+  try {
+    const parsed = JSON.parse(raw);
+    return {
+      seq: Number.isFinite(parsed.seq) ? parsed.seq : 1,
+      records: Array.isArray(parsed.records) ? parsed.records : [],
+    };
+  } catch {
+    return { seq: 1, records: [] };
+  }
+}
+
+function saveFinalRecordsState(state) {
+  localStorage.setItem(FINAL_RECORDS_KEY, JSON.stringify(state));
+}
+
+function addFinalRecord(team, source) {
+  const finalState = loadFinalRecordsState();
+  finalState.records.push({
+    id: finalState.seq,
+    teamName: team.name,
+    quote: team.quote || '',
+    finalBalanceManwon: team.balance,
+    source,
+    savedAt: Date.now(),
+  });
+  finalState.seq += 1;
+  saveFinalRecordsState(finalState);
+}
+
 function recalcBalances() {
   teams.forEach((team) => {
     team.seed = INITIAL_SEED_MANWON;
-    team.balance = team.seed;
-    team.roundBalances = [{ round: 0, balance: team.seed }];
+    team.balance = INITIAL_SEED_MANWON;
+    team.roundBalances = [{ round: 0, balance: INITIAL_SEED_MANWON }];
   });
 
-  const sorted = [...events].sort(
-    (a, b) => a.createdAt - b.createdAt || a.id - b.id
-  );
-
+  const sorted = [...events].sort((a, b) => a.createdAt - b.createdAt || a.id - b.id);
   sorted.forEach((evt) => {
     const team = getTeamById(evt.teamId);
     if (!team) return;
 
     team.balance += evt.deltaManwon;
-    team.roundBalances.push({
-      round: evt.round,
-      balance: team.balance,
-    });
+    team.roundBalances.push({ round: evt.round, balance: team.balance });
     evt.balanceAfterManwon = team.balance;
   });
 }
@@ -135,7 +159,7 @@ function renderSummary() {
         <h3>${team.name}</h3>
         <div class="money">${formatEok(team.balance)}</div>
       </article>
-    `
+      `
     )
     .join('');
 }
@@ -147,6 +171,7 @@ function renderLeaderboard() {
   }
 
   const sorted = [...teams].sort((a, b) => b.balance - a.balance || a.name.localeCompare(b.name));
+
   leaderboardListEl.innerHTML = sorted
     .map(
       (team, idx) => `
@@ -155,7 +180,12 @@ function renderLeaderboard() {
         <td>${team.name}</td>
         <td>${formatEok(team.balance)}</td>
         <td>${team.quote || '-'}</td>
-        <td><button type="button" class="mini" data-action="edit-quote" data-team-id="${team.id}">한마디 수정</button></td>
+        <td>
+          <div class="action-stack">
+            <button type="button" class="mini" data-action="edit-quote" data-team-id="${team.id}">한마디 수정</button>
+            <button type="button" class="mini secondary" data-action="save-final" data-team-id="${team.id}">최종으로 기록</button>
+          </div>
+        </td>
       </tr>
       `
     )
@@ -177,44 +207,44 @@ function renderTeamEventCards() {
   teamEventCardsEl.innerHTML = teams
     .map(
       (team) => `
-    <form class="team-event-form" data-team-id="${team.id}">
-      <h3>${team.name} <span class="round-badge">다음 회차 R${nextRoundForTeam(team.id)}</span></h3>
-      <label>
-        이벤트 유형
-        <select name="type" required>
-          ${EVENT_TYPES.map((type) => `<option value="${type}">${type}</option>`).join('')}
-        </select>
-      </label>
-
-      <label class="amount-wrap">
-        금액 (만원)
-        <input type="number" name="amount" step="1" placeholder="예: 300, -120" required />
-      </label>
-
-      <div class="bigdeal-wrap hidden">
+      <form class="team-event-form" data-team-id="${team.id}">
+        <h3>${team.name} <span class="round-badge">다음 회차 R${nextRoundForTeam(team.id)}</span></h3>
         <label>
-          상대팀
-          <select name="targetTeamId">
-            ${teamOptions(team.id)}
+          이벤트 유형
+          <select name="type" required>
+            ${EVENT_TYPES.map((type) => `<option value="${type}">${type}</option>`).join('')}
           </select>
         </label>
-        <label>
-          결과
-          <select name="bigDealResult">
-            <option value="win">승리 (자금 교환)</option>
-            <option value="lose">패배 (변화 없음)</option>
-          </select>
+
+        <label class="amount-wrap">
+          금액 (만원)
+          <input type="number" name="amount" step="1" placeholder="예: 300, -120" required />
         </label>
-      </div>
 
-      <label>
-        메모
-        <input type="text" name="note" maxlength="120" placeholder="메모를 입력하세요" />
-      </label>
+        <div class="bigdeal-wrap hidden">
+          <label>
+            상대팀
+            <select name="targetTeamId">
+              ${teamOptions(team.id)}
+            </select>
+          </label>
+          <label>
+            결과
+            <select name="bigDealResult">
+              <option value="win">승리 (자금 교환)</option>
+              <option value="lose">패배 (변화 없음)</option>
+            </select>
+          </label>
+        </div>
 
-      <button type="submit">${team.name} 기록 추가</button>
-    </form>
-    `
+        <label>
+          메모
+          <input type="text" name="note" maxlength="120" placeholder="메모를 입력하세요" />
+        </label>
+
+        <button type="submit">${team.name} 기록 추가</button>
+      </form>
+      `
     )
     .join('');
 }
@@ -493,17 +523,26 @@ teamEventCardsEl.addEventListener('submit', (e) => {
 leaderboardListEl.addEventListener('click', (e) => {
   const target = e.target;
   if (!(target instanceof HTMLButtonElement)) return;
-  if (target.dataset.action !== 'edit-quote') return;
 
+  const action = target.dataset.action;
   const teamId = Number(target.dataset.teamId);
   const team = getTeamById(teamId);
   if (!team) return;
 
-  const nextQuote = prompt('팀 한마디를 수정하세요.', team.quote || '');
-  if (nextQuote === null) return;
+  if (action === 'edit-quote') {
+    const nextQuote = prompt('팀 한마디를 수정하세요.', team.quote || '');
+    if (nextQuote === null) return;
 
-  team.quote = nextQuote.trim();
-  renderAll();
+    team.quote = nextQuote.trim();
+    renderAll();
+    return;
+  }
+
+  if (action === 'save-final') {
+    recalcBalances();
+    addFinalRecord(team, '현황판 버튼');
+    alert(`${team.name}의 현재 금액을 최종 기록으로 저장했습니다.`);
+  }
 });
 
 eventListEl.addEventListener('click', (e) => {
@@ -544,7 +583,7 @@ eventListEl.addEventListener('click', (e) => {
 });
 
 resetAllBtn.addEventListener('click', () => {
-  const ok = confirm('모든 팀/이벤트 데이터를 삭제할까요?');
+  const ok = confirm('모든 팀/이벤트 데이터를 삭제할까요? (최종 기록은 삭제되지 않습니다)');
   if (!ok) return;
 
   teams = [];
